@@ -121,6 +121,10 @@ def on_button_click(label, idx):
         return
       current_idx = None
       current_idx = (label, idx)
+      if active_button == current_idx:
+        words_state[label][idx] = HAS_WORD
+        active_button = None
+        return
       same_column = active_button and active_button[0] == label
       if same_column:
         words_state[label][active_button[1]] = HAS_WORD
