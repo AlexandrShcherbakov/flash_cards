@@ -19,7 +19,7 @@ EMPTY = 0
 HAS_WORD = 1
 CHOOSEN = 2
 
-LISTS_FILTER = "./lists"
+LISTS_FOLDER = "./lists"
 
 state_to_color = [
   "777777",
@@ -87,7 +87,7 @@ class ActiveWord:
 
 def get_active_list_file():
   global active_list_name
-  return pathlib.Path(LISTS_FILTER) / (active_list_name + ".json")
+  return pathlib.Path(LISTS_FOLDER) / (active_list_name + ".json")
 
 
 def dump_list():
@@ -144,7 +144,7 @@ class CreateListDialog(QDialog):
     self.main_window.setStatusTip("")
 
   def try_to_create_list(self):
-    folderPath = pathlib.Path(LISTS_FILTER)
+    folderPath = pathlib.Path(LISTS_FOLDER)
     folderPath.mkdir(exist_ok=True)
     list_name = self.ui.listName.text()
     list_path = folderPath / (list_name + ".json")
@@ -163,7 +163,7 @@ class OpenListDialog(QDialog):
     super(OpenListDialog, self).__init__()
     self.ui = ui_open_list.Ui_Dialog()
     self.ui.setupUi(self)
-    self.ui.ListOfLists.addItems(x.rsplit(".")[0] for x in os.listdir(LISTS_FILTER) if x.endswith("json"))
+    self.ui.ListOfLists.addItems(x.rsplit(".")[0] for x in os.listdir(LISTS_FOLDER) if x.endswith("json"))
     self.accepted.connect(lambda : self.open_list())
     self.main_window = main_window
     self.main_window.setStatusTip("")
@@ -195,7 +195,7 @@ class AddWordDialog(QDialog):
 
 
 def has_lists():
-  return pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER))
+  return pathlib.Path(LISTS_FOLDER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
 
 
 def can_add_word():
