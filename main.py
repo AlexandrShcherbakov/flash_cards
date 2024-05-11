@@ -4,6 +4,7 @@ import sys
 import dataclasses
 import random
 import json
+import datetime
 
 from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton, QLineEdit, QLabel
 
@@ -46,6 +47,7 @@ score = None
 errors = None
 active_list_name = None
 active_button = None
+train_start = None
 
 
 def trained_word(idx):
@@ -290,6 +292,8 @@ class FinishTrainDialog(QDialog):
     self.ui.correct_words_count.setText(str(score))
     self.ui.errors_count.setText(str(errors))
     self.ui.correctness_percentage.setText(str(round(score / (score + errors) * 100, 2)))
+    self.ui.train_time.setText(str(datetime.datetime.now() - train_start).split(".")[0])
+    self.ui.learned_count.setText(str(len([x for x in range(len(collection)) if trained_word(x)])))
 
   def finish_train(self):
     dump_list()
@@ -331,6 +335,8 @@ def reset_stats():
 def start_train():
   reset_stats()
   fill_cards()
+  global train_start
+  train_start = datetime.datetime.now()
 
 
 class App(QMainWindow):
