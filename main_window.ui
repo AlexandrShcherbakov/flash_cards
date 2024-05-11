@@ -50,6 +50,7 @@
     <addaction name="createList"/>
     <addaction name="open_list"/>
     <addaction name="add_word"/>
+    <addaction name="change_list"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -77,6 +78,11 @@
   <action name="start_train">
    <property name="text">
     <string>Начать тренировку</string>
+   </property>
+  </action>
+  <action name="change_list">
+   <property name="text">
+    <string>Изменить коллекцию</string>
    </property>
   </action>
  </widget>

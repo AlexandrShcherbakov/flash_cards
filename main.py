@@ -5,13 +5,14 @@ import dataclasses
 import random
 import json
 
-from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton
+from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton, QLineEdit, QLabel
 
 import ui_create_list
 import ui_main_window
 import ui_open_list
 import ui_add_word
 import ui_train_finish
+import ui_edit_words_list
 
 
 CARDS_COUNT = 5
@@ -226,6 +227,60 @@ class AddWordDialog(QDialog):
     update_menu_state(self.main_window)
 
 
+class ChangeListDialog(QDialog):
+  def __init__(self, main_window):
+    super(ChangeListDialog, self).__init__()
+    self.ui = ui_edit_words_list.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.accepted.connect(lambda : self.save_list())
+    self.main_window = main_window
+    self.main_window.setStatusTip("")
+    self.removed_words = []
+    self.rerender()
+
+  def save_list(self):
+    global active_list_name, collection
+    self.main_window.setStatusTip(f"Список {active_list_name} сохранён.")
+    new_collection = []
+    row = 0
+    for index, word in enumerate(collection):
+      if index in self.removed_words:
+        continue
+      new_collection.append(word)
+      for i in range(2):
+        new_collection[-1]["words"][i] = self.ui.words_list.itemAtPosition(row, i + 1).widget().text()
+      row += 1
+    collection = new_collection
+    dump_list()
+    reset_stats()
+    update_menu_state(self.main_window)
+    render_buttons()
+
+  def rerender(self):
+    self.ui.label.setText(f"Список {active_list_name} содержит {len(collection) - len(self.removed_words)} слов")
+    for i in reversed(range(self.ui.words_list.count())):
+      self.ui.words_list.itemAt(i).widget().deleteLater()
+    row = 0
+    for index, word in enumerate(collection):
+      if index in self.removed_words:
+        continue
+      self.ui.words_list.addWidget(QLabel(str(row)), row, 0)
+      for i in range(2):
+        word_edit = QLineEdit()
+        word_edit.setText(word["words"][i])
+        self.ui.words_list.addWidget(word_edit, row, i + 1)
+      self.ui.words_list.addWidget(QLabel(str(word["score"])), row, 3)
+      remove_button = QPushButton("Удалить")
+      def gen_remove_callback(dialog, index):
+        def remove_item():
+          dialog.removed_words.append(index)
+          dialog.rerender()
+        return remove_item
+      remove_button.clicked.connect(gen_remove_callback(self, index))
+      self.ui.words_list.addWidget(remove_button, row, 4)
+      row += 1
+
+
 class FinishTrainDialog(QDialog):
   def __init__(self):
     super(FinishTrainDialog, self).__init__()
@@ -246,7 +301,7 @@ def has_lists():
   return pathlib.Path(LISTS_FOLDER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
 
 
-def can_add_word():
+def can_modify_list():
   return has_lists() and active_list_name != None
 
 
@@ -256,8 +311,9 @@ def can_start_train():
 
 def update_menu_state(main_window):
   main_window.ui.open_list.setVisible(has_lists())
-  main_window.ui.add_word.setVisible(can_add_word())
+  main_window.ui.add_word.setVisible(can_modify_list())
   main_window.ui.start_train.setVisible(can_start_train())
+  main_window.ui.change_list.setVisible(can_modify_list())
 
 
 def reset_stats():
@@ -285,6 +341,7 @@ class App(QMainWindow):
     self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
     self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
     self.ui.add_word.triggered.connect(lambda : AddWordDialog(self).exec())
+    self.ui.change_list.triggered.connect(lambda : ChangeListDialog(self).exec())
     self.ui.start_train.triggered.connect(start_train)
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
