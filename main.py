@@ -182,7 +182,7 @@ class OpenListDialog(QDialog):
 
 
 def update_lists_state(main_window):
-  main_window.ui.open_list.setEnabled(pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER)))
+  main_window.ui.open_list.setVisible(pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER)))
 
 
 class App(QMainWindow):
