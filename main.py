@@ -3,12 +3,14 @@ import os
 import sys
 import dataclasses
 import random
+import json
 
 from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton
 
 import ui_create_list
 import ui_main_window
 import ui_open_list
+import ui_add_word
 
 
 CARDS_COUNT = 5
@@ -30,25 +32,7 @@ buttons = {
   "right": [],
 }
 
-russian_words = [
-  "Забронировать",
-  "отель",
-  "купить",
-  "билеты",
-  "на",
-  "конференцию",
-]
-
-english_words = [
-  "Book",
-  "hotel",
-  "buy",
-  "tickets",
-  "for",
-  "conference",
-]
-
-collection = list(zip(russian_words, english_words))
+collection = []
 
 active_words = []
 words_state = {
@@ -57,7 +41,7 @@ words_state = {
 }
 words_to_fill = CARDS_COUNT
 score = 0
-active_list_file = None
+active_list_name = None
 active_button = None
 
 
@@ -90,8 +74,8 @@ def render_buttons():
       button.setText("")
       button.setStyleSheet(f'QPushButton {{background-color: #{state_to_color[state]}; font: 24px;}}')
   for word in active_words:
-    buttons["left"][word.left_offset].setText(collection[word.index][0])
-    buttons["right"][word.right_offset].setText(collection[word.index][1])
+    buttons["left"][word.left_offset].setText(collection[word.index]["words"][0])
+    buttons["right"][word.right_offset].setText(collection[word.index]["words"][1])
 
 
 @dataclasses.dataclass
@@ -99,6 +83,16 @@ class ActiveWord:
   index: int
   left_offset: int
   right_offset: int
+
+
+def get_active_list_file():
+  global active_list_name
+  return pathlib.Path(LISTS_FILTER) / (active_list_name + ".json")
+
+
+def dump_list():
+  with get_active_list_file().open("w") as fin:
+    fin.write(json.dumps(collection))
 
 
 def on_button_click(label, idx):
@@ -159,9 +153,9 @@ class CreateListDialog(QDialog):
     else:
       list_path.touch()
       self.main_window.setStatusTip(f"Список {list_name} создан.")
-      global active_list_file
-      active_list_file = list_path
-    update_lists_state(self.main_window)
+      global active_list_name
+      active_list_name = list_name
+    update_menu_state(self.main_window)
 
 
 class OpenListDialog(QDialog):
@@ -176,13 +170,41 @@ class OpenListDialog(QDialog):
 
   def open_list(self):
     list_name = self.ui.ListOfLists.currentText()
-    global active_list_file
-    active_list_file = pathlib.Path(LISTS_FILTER) / (list_name + ".json")
+    global active_list_name
+    active_list_name = list_name
     self.main_window.setStatusTip(f"Выбран список {list_name}.")
+    update_menu_state(self.main_window)
 
 
-def update_lists_state(main_window):
-  main_window.ui.open_list.setVisible(pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER)))
+class AddWordDialog(QDialog):
+  def __init__(self, main_window):
+    super(AddWordDialog, self).__init__()
+    self.ui = ui_add_word.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.accepted.connect(lambda : self.add_word())
+    self.main_window = main_window
+    self.main_window.setStatusTip("")
+
+  def add_word(self):
+    word1 = self.ui.word1.text()
+    word2 = self.ui.word2.text()
+    collection.append({"words": (word1, word2), "score": 0})
+    dump_list()
+    global active_list_name
+    self.main_window.setStatusTip(f"Слово/фраза {word1} теперь есть в списке {active_list_name}.")
+
+
+def has_lists():
+  return pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER))
+
+
+def can_add_word():
+  return has_lists() and active_list_name != None
+
+
+def update_menu_state(main_window):
+  main_window.ui.open_list.setVisible(has_lists())
+  main_window.ui.add_word.setVisible(can_add_word())
 
 
 class App(QMainWindow):
@@ -192,6 +214,7 @@ class App(QMainWindow):
     self.ui.setupUi(self)
     self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
     self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
+    self.ui.add_word.triggered.connect(lambda : AddWordDialog(self).exec())
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
         button = QPushButton()
@@ -200,8 +223,7 @@ class App(QMainWindow):
         getattr(self.ui, side + "_side").addWidget(button)
         button.clicked.connect(on_button_click(side, index))
 
-    update_lists_state(self)
-    fill_cards()
+    update_menu_state(self)
 
 
 if __name__ == "__main__":
