@@ -1,9 +1,11 @@
+import pathlib
 import sys
 import dataclasses
 import random
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton
 
+import ui_create_list
 import ui_main_window
 
 
@@ -51,6 +53,7 @@ words_state = {
 }
 words_to_fill = CARDS_COUNT
 score = 0
+active_list_file = None
 
 
 def fill_cards():
@@ -133,11 +136,35 @@ def on_button_click(label, idx):
   return process_click
 
 
+class CreateListDialog(QDialog):
+  def __init__(self, main_window):
+    super(CreateListDialog, self).__init__()
+    self.ui = ui_create_list.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.accepted.connect(lambda : self.try_to_create_list())
+    self.main_window = main_window
+    self.main_window.setStatusTip("")
+
+  def try_to_create_list(self):
+    folderPath = pathlib.Path("./lists")
+    folderPath.mkdir(exist_ok=True)
+    list_name = self.ui.listName.text()
+    list_path = folderPath / (list_name + ".json")
+    if list_path.exists():
+      self.main_window.setStatusTip(f"Список {list_name} уже существует.")
+    else:
+      list_path.touch()
+      self.main_window.setStatusTip(f"Список {list_name} создан.")
+      global active_list_file
+      active_list_file = list_path
+
+
 class App(QMainWindow):
   def __init__(self):
     super(App, self).__init__()
     self.ui = ui_main_window.Ui_MainWindow()
     self.ui.setupUi(self)
+    self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
     for index in range(CARDS_COUNT):
       button = QPushButton()
       button.setFixedHeight(100)
