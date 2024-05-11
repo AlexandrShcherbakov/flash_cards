@@ -37,15 +37,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout = QHBoxLayout(self.horizontalLayoutWidget)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.LeftSide = QVBoxLayout()
-        self.LeftSide.setObjectName(u"LeftSide")
+        self.left_side = QVBoxLayout()
+        self.left_side.setObjectName(u"left_side")
 
-        self.horizontalLayout.addLayout(self.LeftSide)
+        self.horizontalLayout.addLayout(self.left_side)
 
-        self.RightSide = QVBoxLayout()
-        self.RightSide.setObjectName(u"RightSide")
+        self.right_side = QVBoxLayout()
+        self.right_side.setObjectName(u"right_side")
 
-        self.horizontalLayout.addLayout(self.RightSide)
+        self.horizontalLayout.addLayout(self.right_side)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)

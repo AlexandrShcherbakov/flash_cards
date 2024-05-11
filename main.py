@@ -193,16 +193,12 @@ class App(QMainWindow):
     self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
     self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
     for index in range(CARDS_COUNT):
-      button = QPushButton()
-      button.setFixedHeight(100)
-      buttons["left"].append(button)
-      self.ui.LeftSide.addWidget(button)
-      button.clicked.connect(on_button_click("left", index))
-      button = QPushButton()
-      button.setFixedHeight(100)
-      buttons["right"].append(button)
-      self.ui.RightSide.addWidget(button)
-      button.clicked.connect(on_button_click("right", index))
+      for side in ["left", "right"]:
+        button = QPushButton()
+        button.setFixedHeight(100)
+        buttons[side].append(button)
+        getattr(self.ui, side + "_side").addWidget(button)
+        button.clicked.connect(on_button_click(side, index))
 
     update_lists_state(self)
     fill_cards()

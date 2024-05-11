@@ -25,10 +25,10 @@
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QVBoxLayout" name="LeftSide"/>
+      <layout class="QVBoxLayout" name="left_side"/>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="RightSide"/>
+      <layout class="QVBoxLayout" name="right_side"/>
      </item>
     </layout>
    </widget>
