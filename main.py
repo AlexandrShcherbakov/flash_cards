@@ -11,9 +11,11 @@ import ui_create_list
 import ui_main_window
 import ui_open_list
 import ui_add_word
+import ui_train_finish
 
 
 CARDS_COUNT = 5
+TRAIN_LENGTH = 2
 
 EMPTY = 0
 HAS_WORD = 1
@@ -38,6 +40,7 @@ active_words = None
 words_state = None
 words_to_fill = None
 score = None
+errors = None
 active_list_name = None
 active_button = None
 
@@ -99,7 +102,7 @@ def load_list():
 def on_button_click(label, idx):
   def process_click():
     try:
-      global active_button, active_words
+      global active_button, active_words, errors
       if words_state[label][idx] == EMPTY:
         return
       current_idx = None
@@ -121,6 +124,7 @@ def on_button_click(label, idx):
         if word.right_offset != right_idx:
           words_state[active_button[0]][active_button[1]] = HAS_WORD
           active_button = None
+          errors += 1
           return
         active_button = None
         words_state["left"][left_idx] = EMPTY
@@ -128,6 +132,9 @@ def on_button_click(label, idx):
         active_words = active_words[:word_idx] + active_words[word_idx + 1:]
         global score, words_to_fill
         score += 1
+        if score == TRAIN_LENGTH:
+          FinishTrainDialog().exec()
+          return
         words_to_fill += 1
         if words_to_fill >= random.randint(2, 3):
           fill_cards()
@@ -199,6 +206,22 @@ class AddWordDialog(QDialog):
     update_menu_state(self.main_window)
 
 
+class FinishTrainDialog(QDialog):
+  def __init__(self):
+    super(FinishTrainDialog, self).__init__()
+    self.ui = ui_train_finish.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.finished.connect(lambda : self.finish_train())
+    self.ui.correct_words_count.setText(str(score))
+    self.ui.errors_count.setText(str(errors))
+    self.ui.correctness_percentage.setText(str(round(score / (score + errors) * 100, 2)))
+
+  def finish_train(self):
+    dump_list()
+    reset_stats()
+    render_buttons()
+
+
 def has_lists():
   return pathlib.Path(LISTS_FOLDER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
 
@@ -217,8 +240,8 @@ def update_menu_state(main_window):
   main_window.ui.start_train.setVisible(can_start_train())
 
 
-def start_train():
-  global active_words, words_state, words_to_fill, score
+def reset_stats():
+  global active_words, words_state, words_to_fill, score, errors
   active_words = []
   words_state = {
     "left": [EMPTY] * CARDS_COUNT,
@@ -226,6 +249,11 @@ def start_train():
   }
   words_to_fill = CARDS_COUNT
   score = 0
+  errors = 0
+
+
+def start_train():
+  reset_stats()
   fill_cards()
 
 
