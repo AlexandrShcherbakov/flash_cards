@@ -15,7 +15,9 @@ import ui_train_finish
 
 
 CARDS_COUNT = 5
-TRAIN_LENGTH = 2
+TRAIN_LENGTH = 50
+REPETITIONS_TO_TRAIN = 20
+POOL_SIZE = 25
 
 EMPTY = 0
 HAS_WORD = 1
@@ -45,6 +47,21 @@ active_list_name = None
 active_button = None
 
 
+def trained_word(idx):
+  return collection[idx]["score"] >= REPETITIONS_TO_TRAIN
+
+
+def is_word_active(idx):
+  return any(idx == x.index for x in active_words)
+
+
+def select_word():
+  words = [idx for idx in range(len(collection)) if not trained_word(idx) and not is_word_active(idx)][:POOL_SIZE]
+  words += [idx for idx in range(len(collection)) if trained_word(idx) and not is_word_active(idx)]
+  weights = [1 if not trained_word(idx) else 0.5 * (0.95 ** (collection[idx]["score"] / REPETITIONS_TO_TRAIN)) for idx in words]
+  return random.choices(words, weights)[0]
+
+
 def fill_cards():
   empty_left = []
   empty_right = []
@@ -57,10 +74,7 @@ def fill_cards():
       words_state["right"][idx] = HAS_WORD
   random.shuffle(empty_right)
   for left_idx, right_idx in zip(empty_left, empty_right):
-    idx = random.randint(0, len(collection) - 1)
-    while any(idx == x.index for x in active_words):
-      idx = random.randint(0, len(collection) - 1)
-    active_words.append(ActiveWord(idx, left_idx, right_idx))
+    active_words.append(ActiveWord(select_word(), left_idx, right_idx))
   global words_to_fill
   words_to_fill = 0
   render_buttons()
