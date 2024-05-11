@@ -100,7 +100,7 @@ def on_button_click(label, idx):
   def process_click():
     try:
       global active_button, active_words
-      if active_button[label][idx] == EMPTY:
+      if words_state[label][idx] == EMPTY:
         return
       current_idx = None
       current_idx = (label, idx)
