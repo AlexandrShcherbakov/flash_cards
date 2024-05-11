@@ -26,9 +26,9 @@ CHOOSEN = 2
 LISTS_FOLDER = "./lists"
 
 state_to_color = [
-  "777777",
-  "777777",
-  "222277",
+  "BFB5B9",
+  "BFB5B9",
+  "FFBE9E",
 ]
 
 buttons = {
