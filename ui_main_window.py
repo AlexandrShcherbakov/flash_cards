@@ -31,6 +31,10 @@ class Ui_MainWindow(object):
         self.open_list.setObjectName(u"open_list")
         self.add_word = QAction(MainWindow)
         self.add_word.setObjectName(u"add_word")
+        self.action = QAction(MainWindow)
+        self.action.setObjectName(u"action")
+        self.start_train = QAction(MainWindow)
+        self.start_train.setObjectName(u"start_train")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayoutWidget = QWidget(self.centralwidget)
@@ -61,6 +65,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.menubar.addAction(self.menu.menuAction())
+        self.menu.addAction(self.start_train)
         self.menu.addAction(self.createList)
         self.menu.addAction(self.open_list)
         self.menu.addAction(self.add_word)
@@ -75,6 +80,8 @@ class Ui_MainWindow(object):
         self.createList.setText(QCoreApplication.translate("MainWindow", u"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044e", None))
         self.open_list.setText(QCoreApplication.translate("MainWindow", u"\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044e", None))
         self.add_word.setText(QCoreApplication.translate("MainWindow", u"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u043b\u043e\u0432\u043e", None))
+        self.action.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0447\u0430\u0442\u044c \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443", None))
+        self.start_train.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0447\u0430\u0442\u044c \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f", None))
     # retranslateUi
 

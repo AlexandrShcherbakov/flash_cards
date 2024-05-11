@@ -46,6 +46,7 @@
     <property name="title">
      <string>Действия</string>
     </property>
+    <addaction name="start_train"/>
     <addaction name="createList"/>
     <addaction name="open_list"/>
     <addaction name="add_word"/>
@@ -66,6 +67,16 @@
   <action name="add_word">
    <property name="text">
     <string>Добавить слово</string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="text">
+    <string>Начать тренировку</string>
+   </property>
+  </action>
+  <action name="start_train">
+   <property name="text">
+    <string>Начать тренировку</string>
    </property>
   </action>
  </widget>

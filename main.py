@@ -34,13 +34,10 @@ buttons = {
 
 collection = []
 
-active_words = []
-words_state = {
-  "left": [EMPTY] * CARDS_COUNT,
-  "right": [EMPTY] * CARDS_COUNT,
-}
-words_to_fill = CARDS_COUNT
-score = 0
+active_words = None
+words_state = None
+words_to_fill = None
+score = None
 active_list_name = None
 active_button = None
 
@@ -56,9 +53,7 @@ def fill_cards():
       empty_right.append(idx)
       words_state["right"][idx] = HAS_WORD
   random.shuffle(empty_right)
-  empty_pairs = list(zip(empty_left, empty_right))
-  random.shuffle(empty_pairs)
-  for left_idx, right_idx in empty_pairs:
+  for left_idx, right_idx in zip(empty_left, empty_right):
     idx = random.randint(0, len(collection) - 1)
     while any(idx == x.index for x in active_words):
       idx = random.randint(0, len(collection) - 1)
@@ -91,14 +86,22 @@ def get_active_list_file():
 
 
 def dump_list():
-  with get_active_list_file().open("w") as fin:
-    fin.write(json.dumps(collection))
+  with get_active_list_file().open("w") as fout:
+    fout.write(json.dumps(collection))
+
+
+def load_list():
+  with get_active_list_file().open("r") as fin:
+    global collection
+    collection = json.loads(fin.read())
 
 
 def on_button_click(label, idx):
   def process_click():
     try:
-      global active_button
+      global active_button, active_words
+      if active_button[label][idx] == EMPTY:
+        return
       current_idx = None
       current_idx = (label, idx)
       same_column = active_button and active_button[0] == label
@@ -122,12 +125,12 @@ def on_button_click(label, idx):
         active_button = None
         words_state["left"][left_idx] = EMPTY
         words_state["right"][right_idx] = EMPTY
+        active_words = active_words[:word_idx] + active_words[word_idx + 1:]
         global score, words_to_fill
         score += 1
         words_to_fill += 1
         if words_to_fill >= random.randint(2, 3):
           fill_cards()
-        del active_words[word_idx]
         break
     finally:
       render_buttons()
@@ -173,6 +176,7 @@ class OpenListDialog(QDialog):
     global active_list_name
     active_list_name = list_name
     self.main_window.setStatusTip(f"Выбран список {list_name}.")
+    load_list()
     update_menu_state(self.main_window)
 
 
@@ -192,6 +196,7 @@ class AddWordDialog(QDialog):
     dump_list()
     global active_list_name
     self.main_window.setStatusTip(f"Слово/фраза {word1} теперь есть в списке {active_list_name}.")
+    update_menu_state(self.main_window)
 
 
 def has_lists():
@@ -202,9 +207,26 @@ def can_add_word():
   return has_lists() and active_list_name != None
 
 
+def can_start_train():
+  return has_lists() and active_list_name != None and len(collection) >= CARDS_COUNT
+
+
 def update_menu_state(main_window):
   main_window.ui.open_list.setVisible(has_lists())
   main_window.ui.add_word.setVisible(can_add_word())
+  main_window.ui.start_train.setVisible(can_start_train())
+
+
+def start_train():
+  global active_words, words_state, words_to_fill, score
+  active_words = []
+  words_state = {
+    "left": [EMPTY] * CARDS_COUNT,
+    "right": [EMPTY] * CARDS_COUNT,
+  }
+  words_to_fill = CARDS_COUNT
+  score = 0
+  fill_cards()
 
 
 class App(QMainWindow):
@@ -215,6 +237,7 @@ class App(QMainWindow):
     self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
     self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
     self.ui.add_word.triggered.connect(lambda : AddWordDialog(self).exec())
+    self.ui.start_train.triggered.connect(start_train)
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
         button = QPushButton()
