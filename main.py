@@ -124,17 +124,19 @@ def on_button_click(label, idx):
         if word.right_offset != right_idx:
           words_state[active_button[0]][active_button[1]] = HAS_WORD
           active_button = None
+          collection[active_words[word_idx].index]["score"] -= 1
           errors += 1
           return
         active_button = None
         words_state["left"][left_idx] = EMPTY
         words_state["right"][right_idx] = EMPTY
-        active_words = active_words[:word_idx] + active_words[word_idx + 1:]
         global score, words_to_fill
         score += 1
+        collection[active_words[word_idx].index]["score"] += 1
         if score == TRAIN_LENGTH:
           FinishTrainDialog().exec()
           return
+        active_words = active_words[:word_idx] + active_words[word_idx + 1:]
         words_to_fill += 1
         if words_to_fill >= random.randint(2, 3):
           fill_cards()
