@@ -47,6 +47,7 @@
      <string>Действия</string>
     </property>
     <addaction name="createList"/>
+    <addaction name="open_list"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -54,6 +55,11 @@
   <action name="createList">
    <property name="text">
     <string>Добавить коллекцию</string>
+   </property>
+  </action>
+  <action name="open_list">
+   <property name="text">
+    <string>Открыть коллекцию</string>
    </property>
   </action>
  </widget>

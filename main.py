@@ -1,4 +1,5 @@
 import pathlib
+import os
 import sys
 import dataclasses
 import random
@@ -7,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton
 
 import ui_create_list
 import ui_main_window
+import ui_open_list
 
 
 CARDS_COUNT = 5
@@ -14,6 +16,8 @@ CARDS_COUNT = 5
 EMPTY = 0
 HAS_WORD = 1
 CHOOSEN = 2
+
+LISTS_FILTER = "./lists"
 
 state_to_color = [
   "777777",
@@ -54,6 +58,7 @@ words_state = {
 words_to_fill = CARDS_COUNT
 score = 0
 active_list_file = None
+active_button = None
 
 
 def fill_cards():
@@ -95,7 +100,6 @@ class ActiveWord:
   left_offset: int
   right_offset: int
 
-active_button = None
 
 def on_button_click(label, idx):
   def process_click():
@@ -146,7 +150,7 @@ class CreateListDialog(QDialog):
     self.main_window.setStatusTip("")
 
   def try_to_create_list(self):
-    folderPath = pathlib.Path("./lists")
+    folderPath = pathlib.Path(LISTS_FILTER)
     folderPath.mkdir(exist_ok=True)
     list_name = self.ui.listName.text()
     list_path = folderPath / (list_name + ".json")
@@ -157,6 +161,28 @@ class CreateListDialog(QDialog):
       self.main_window.setStatusTip(f"Список {list_name} создан.")
       global active_list_file
       active_list_file = list_path
+    update_lists_state(self.main_window)
+
+
+class OpenListDialog(QDialog):
+  def __init__(self, main_window):
+    super(OpenListDialog, self).__init__()
+    self.ui = ui_open_list.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.ui.ListOfLists.addItems(x.rsplit(".")[0] for x in os.listdir(LISTS_FILTER) if x.endswith("json"))
+    self.accepted.connect(lambda : self.open_list())
+    self.main_window = main_window
+    self.main_window.setStatusTip("")
+
+  def open_list(self):
+    list_name = self.ui.ListOfLists.currentText()
+    global active_list_file
+    active_list_file = pathlib.Path(LISTS_FILTER) / (list_name + ".json")
+    self.main_window.setStatusTip(f"Выбран список {list_name}.")
+
+
+def update_lists_state(main_window):
+  main_window.ui.open_list.setEnabled(pathlib.Path(LISTS_FILTER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FILTER)))
 
 
 class App(QMainWindow):
@@ -165,6 +191,7 @@ class App(QMainWindow):
     self.ui = ui_main_window.Ui_MainWindow()
     self.ui.setupUi(self)
     self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
+    self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
     for index in range(CARDS_COUNT):
       button = QPushButton()
       button.setFixedHeight(100)
@@ -177,6 +204,7 @@ class App(QMainWindow):
       self.ui.RightSide.addWidget(button)
       button.clicked.connect(on_button_click("right", index))
 
+    update_lists_state(self)
     fill_cards()
 
 
