@@ -46,38 +46,73 @@ buttons = {
   "right": [],
 }
 
-collection = []
 
-active_words = None
-words_state = None
-words_to_fill = None
-score = None
-errors = None
-active_list_name = None
-active_button = None
-train_start = None
+class Context:
+  def __init__(self):
+    self.active_words = []
+    self.words_state = {
+      "left": [EMPTY] * CARDS_COUNT,
+      "right": [EMPTY] * CARDS_COUNT,
+    }
+    self.collection = []
+    self.score = 0
+    self.errors = 0
+    self.active_list_name = None
+    self.active_button = None
+    self.train_start = None
+
+  def reset(self):
+    self.active_words = []
+    self.words_state = {
+      "left": [EMPTY] * CARDS_COUNT,
+      "right": [EMPTY] * CARDS_COUNT,
+    }
+    self.score = 0
+    self.errors = 0
+    self.active_button = None
+    self.train_start = None
+
+  def is_word_active(self, idx):
+    return any(idx == x.index for x in self.active_words)
+
+  def is_trained_word(self, idx):
+    return self.collection[idx]["score"] >= REPETITIONS_TO_TRAIN
+
+  def activate_word(self, left_idx, right_idx):
+    self.active_words.append(ActiveWord(select_word(), left_idx, right_idx))
+
+  @property
+  def words_to_fill(self):
+    return CARDS_COUNT - len(self.active_words)
+
+  @property
+  def active_list_path(self):
+    return pathlib.Path(LISTS_FOLDER) / (self.active_list_name + ".json")
+
+  def dump_list(self):
+    with self.active_list_path.open("w") as fout:
+      fout.write(json.dumps(self.collection))
+
+  def load_list(self):
+    with self.active_list_path.open("r") as fin:
+      self.collection = json.loads(fin.read())
 
 
-def trained_word(idx):
-  return collection[idx]["score"] >= REPETITIONS_TO_TRAIN
-
-
-def is_word_active(idx):
-  return any(idx == x.index for x in active_words)
+CONTEXT = Context()
 
 
 def select_word():
   words = [
-    idx for idx in range(len(collection))
-    if not trained_word(idx) and not is_word_active(idx)
+    idx for idx in range(len(CONTEXT.collection))
+    if not CONTEXT.is_trained_word(idx) and not CONTEXT.is_word_active(idx)
   ][:POOL_SIZE]
   words += [
-    idx for idx in range(len(collection))
-    if trained_word(idx) and not is_word_active(idx)
+    idx for idx in range(len(CONTEXT.collection))
+    if CONTEXT.is_trained_word(idx) and not CONTEXT.is_word_active(idx)
   ]
   weights = [
-    1 if not trained_word(idx) else
-      0.5 * (0.95 ** (collection[idx]["score"] / REPETITIONS_TO_TRAIN))
+    1 if not CONTEXT.is_trained_word(idx) else
+      0.5 * (0.95 ** (CONTEXT.collection[idx]["score"] / REPETITIONS_TO_TRAIN))
     for idx in words
   ]
   return random.choices(words, weights)[0]
@@ -87,30 +122,28 @@ def fill_cards():
   empty_left = []
   empty_right = []
   for idx in range(CARDS_COUNT):
-    if words_state["left"][idx] == EMPTY:
+    if CONTEXT.words_state["left"][idx] == EMPTY:
       empty_left.append(idx)
-      words_state["left"][idx] = HAS_WORD
-    if words_state["right"][idx] == EMPTY:
+      CONTEXT.words_state["left"][idx] = HAS_WORD
+    if CONTEXT.words_state["right"][idx] == EMPTY:
       empty_right.append(idx)
-      words_state["right"][idx] = HAS_WORD
+      CONTEXT.words_state["right"][idx] = HAS_WORD
   random.shuffle(empty_right)
   for left_idx, right_idx in zip(empty_left, empty_right):
-    active_words.append(ActiveWord(select_word(), left_idx, right_idx))
-  global words_to_fill
-  words_to_fill = 0
+    CONTEXT.activate_word(left_idx, right_idx)
   render_buttons()
 
 
 def render_buttons():
   for side in ["left", "right"]:
-    for button, state in zip(buttons[side], words_state[side]):
+    for button, state in zip(buttons[side], CONTEXT.words_state[side]):
       button.setText("")
       button.setStyleSheet(
         f'QPushButton {{background-color: #{state_to_color[state]}; font: 24px;}}'
       )
-  for word in active_words:
-    buttons["left"][word.left_offset].setText(collection[word.index]["words"][0])
-    buttons["right"][word.right_offset].setText(collection[word.index]["words"][1])
+  for word in CONTEXT.active_words:
+    buttons["left"][word.left_offset].setText(CONTEXT.collection[word.index]["words"][0])
+    buttons["right"][word.right_offset].setText(CONTEXT.collection[word.index]["words"][1])
 
 
 @dataclasses.dataclass
@@ -120,66 +153,47 @@ class ActiveWord:
   right_offset: int
 
 
-def get_active_list_file():
-  global active_list_name
-  return pathlib.Path(LISTS_FOLDER) / (active_list_name + ".json")
-
-
-def dump_list():
-  with get_active_list_file().open("w") as fout:
-    fout.write(json.dumps(collection))
-
-
-def load_list():
-  with get_active_list_file().open("r") as fin:
-    global collection
-    collection = json.loads(fin.read())
-
-
 def on_button_click(label, idx):
   def process_click():
     try:
-      global active_button, active_words, errors
-      if words_state[label][idx] == EMPTY:
+      if CONTEXT.words_state[label][idx] == EMPTY:
         return
       current_idx = None
       current_idx = (label, idx)
-      if active_button == current_idx:
-        words_state[label][idx] = HAS_WORD
-        active_button = None
+      if CONTEXT.active_button == current_idx:
+        CONTEXT.words_state[label][idx] = HAS_WORD
+        CONTEXT.active_button = None
         return
-      same_column = active_button and active_button[0] == label
+      same_column = CONTEXT.active_button and CONTEXT.active_button[0] == label
       if same_column:
-        words_state[label][active_button[1]] = HAS_WORD
-      if active_button is None or same_column:
-        active_button = current_idx
-        words_state[label][idx] = CHOOSEN
+        CONTEXT.words_state[label][CONTEXT.active_button[1]] = HAS_WORD
+      if CONTEXT.active_button is None or same_column:
+        CONTEXT.active_button = current_idx
+        CONTEXT.words_state[label][idx] = CHOOSEN
         return
 
-      left_idx = idx if label == "left" else active_button[1]
-      right_idx = idx if label == "right" else active_button[1]
+      left_idx = idx if label == "left" else CONTEXT.active_button[1]
+      right_idx = idx if label == "right" else CONTEXT.active_button[1]
 
-      for word_idx, word in enumerate(active_words):
+      for word_idx, word in enumerate(CONTEXT.active_words):
         if word.left_offset != left_idx:
           continue
         if word.right_offset != right_idx:
-          words_state[active_button[0]][active_button[1]] = HAS_WORD
-          active_button = None
-          collection[active_words[word_idx].index]["score"] -= 1
-          errors += 1
+          CONTEXT.words_state[CONTEXT.active_button[0]][CONTEXT.active_button[1]] = HAS_WORD
+          CONTEXT.active_button = None
+          CONTEXT.collection[CONTEXT.active_words[word_idx].index]["score"] -= 1
+          CONTEXT.errors += 1
           return
-        active_button = None
-        words_state["left"][left_idx] = EMPTY
-        words_state["right"][right_idx] = EMPTY
-        global score, words_to_fill
-        score += 1
-        collection[active_words[word_idx].index]["score"] += 1
-        if score == TRAIN_LENGTH:
+        CONTEXT.active_button = None
+        CONTEXT.words_state["left"][left_idx] = EMPTY
+        CONTEXT.words_state["right"][right_idx] = EMPTY
+        CONTEXT.score += 1
+        CONTEXT.collection[CONTEXT.active_words[word_idx].index]["score"] += 1
+        if CONTEXT.score == TRAIN_LENGTH:
           FinishTrainDialog().exec()
           return
-        active_words = active_words[:word_idx] + active_words[word_idx + 1:]
-        words_to_fill += 1
-        if words_to_fill >= random.randint(2, 3):
+        CONTEXT.active_words = CONTEXT.active_words[:word_idx] + CONTEXT.active_words[word_idx + 1:]
+        if CONTEXT.words_to_fill >= random.randint(2, 3):
           fill_cards()
         break
     finally:
@@ -206,8 +220,7 @@ class CreateListDialog(QDialog):
     else:
       list_path.touch()
       self.main_window.setStatusTip(f"Список {list_name} создан.")
-      global active_list_name
-      active_list_name = list_name
+      CONTEXT.active_list_name = list_name
     update_menu_state(self.main_window)
 
 
@@ -225,10 +238,9 @@ class OpenListDialog(QDialog):
 
   def open_list(self):
     list_name = self.ui.ListOfLists.currentText()
-    global active_list_name
-    active_list_name = list_name
+    CONTEXT.active_list_name = list_name
     self.main_window.setStatusTip(f"Выбран список {list_name}.")
-    load_list()
+    CONTEXT.load_list()
     update_menu_state(self.main_window)
 
 
@@ -248,18 +260,19 @@ class AddWordDialog(QDialog):
     acceptable = (
       self.ui.word1.text() != ""
       and self.ui.word2.text() != ""
-      and not any(self.ui.word1.text() in x["words"] for x in collection)
-      and not any(self.ui.word2.text() in x["words"] for x in collection)
+      and not any(self.ui.word1.text() in x["words"] for x in CONTEXT.collection)
+      and not any(self.ui.word2.text() in x["words"] for x in CONTEXT.collection)
     )
     self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(acceptable)
 
   def add_word(self):
     word1 = self.ui.word1.text()
     word2 = self.ui.word2.text()
-    collection.append({"words": (word1, word2), "score": 0})
-    dump_list()
-    global active_list_name
-    self.main_window.setStatusTip(f"Слово/фраза {word1} теперь есть в списке {active_list_name}.")
+    CONTEXT.collection.append({"words": (word1, word2), "score": 0})
+    CONTEXT.dump_list()
+    self.main_window.setStatusTip(
+      f"Слово/фраза {word1} теперь есть в списке {CONTEXT.active_list_name}."
+    )
     update_menu_state(self.main_window)
 
 
@@ -275,11 +288,10 @@ class ChangeListDialog(QDialog):
     self.rerender()
 
   def save_list(self):
-    global active_list_name, collection
-    self.main_window.setStatusTip(f"Список {active_list_name} сохранён.")
+    self.main_window.setStatusTip(f"Список {CONTEXT.active_list_name} сохранён.")
     new_collection = []
     row = 0
-    for index, word in enumerate(collection):
+    for index, word in enumerate(CONTEXT.collection):
       if index in self.removed_words:
         continue
       new_collection.append(word)
@@ -288,20 +300,21 @@ class ChangeListDialog(QDialog):
           self.ui.words_list.itemAtPosition(row, i + 1).widget().text()
         )
       row += 1
-    collection = new_collection
-    dump_list()
+    CONTEXT.collection = new_collection
+    CONTEXT.dump_list()
     reset_stats()
     update_menu_state(self.main_window)
     render_buttons()
 
   def rerender(self):
     self.ui.label.setText(
-      f"Список {active_list_name} содержит {len(collection) - len(self.removed_words)} слов"
+      f"Список {CONTEXT.active_list_name} содержит "
+      + f"{len(CONTEXT.collection) - len(self.removed_words)} слов"
     )
     for i in reversed(range(self.ui.words_list.count())):
       self.ui.words_list.itemAt(i).widget().deleteLater()
     row = 0
-    for index, word in enumerate(collection):
+    for index, word in enumerate(CONTEXT.collection):
       if index in self.removed_words:
         continue
       self.ui.words_list.addWidget(QLabel(str(row)), row, 0)
@@ -327,14 +340,20 @@ class FinishTrainDialog(QDialog):
     self.ui = ui_train_finish.Ui_Dialog()
     self.ui.setupUi(self)
     self.finished.connect(self.finish_train)
-    self.ui.correct_words_count.setText(str(score))
-    self.ui.errors_count.setText(str(errors))
-    self.ui.correctness_percentage.setText(str(round(score / (score + errors) * 100, 2)))
-    self.ui.train_time.setText(str(datetime.datetime.now() - train_start).split(".", maxsplit=1)[0])
-    self.ui.learned_count.setText(str(len([x for x in range(len(collection)) if trained_word(x)])))
+    self.ui.correct_words_count.setText(str(CONTEXT.score))
+    self.ui.errors_count.setText(str(CONTEXT.errors))
+    self.ui.correctness_percentage.setText(
+      str(round(CONTEXT.score / (CONTEXT.score + CONTEXT.errors) * 100, 2))
+    )
+    self.ui.train_time.setText(
+      str(datetime.datetime.now() - CONTEXT.train_start).split(".", maxsplit=1)[0]
+    )
+    self.ui.learned_count.setText(
+      str(len([x for x in range(len(CONTEXT.collection)) if CONTEXT.is_trained_word(x)]))
+    )
 
   def finish_train(self):
-    dump_list()
+    CONTEXT.dump_list()
     reset_stats()
     render_buttons()
 
@@ -347,11 +366,15 @@ def has_lists():
 
 
 def can_modify_list():
-  return has_lists() and active_list_name is not None
+  return has_lists() and CONTEXT.active_list_name is not None
 
 
 def can_start_train():
-  return has_lists() and active_list_name is not None and len(collection) >= CARDS_COUNT
+  return (
+    has_lists()
+    and CONTEXT.active_list_name is not None
+    and len(CONTEXT.collection) >= CARDS_COUNT
+  )
 
 
 def update_menu_state(main_window):
@@ -362,22 +385,13 @@ def update_menu_state(main_window):
 
 
 def reset_stats():
-  global active_words, words_state, words_to_fill, score, errors
-  active_words = []
-  words_state = {
-    "left": [EMPTY] * CARDS_COUNT,
-    "right": [EMPTY] * CARDS_COUNT,
-  }
-  words_to_fill = CARDS_COUNT
-  score = 0
-  errors = 0
+  CONTEXT.reset()
 
 
 def start_train():
   reset_stats()
   fill_cards()
-  global train_start
-  train_start = datetime.datetime.now()
+  CONTEXT.train_start = datetime.datetime.now()
 
 
 class App(QMainWindow):
