@@ -6,7 +6,15 @@ import random
 import json
 import datetime
 
-from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton, QLineEdit, QLabel, QDialogButtonBox
+from PySide6.QtWidgets import (
+  QApplication,
+  QDialog,
+  QMainWindow,
+  QPushButton,
+  QLineEdit,
+  QLabel,
+  QDialogButtonBox,
+)
 
 import ui_create_list
 import ui_main_window
@@ -59,9 +67,19 @@ def is_word_active(idx):
 
 
 def select_word():
-  words = [idx for idx in range(len(collection)) if not trained_word(idx) and not is_word_active(idx)][:POOL_SIZE]
-  words += [idx for idx in range(len(collection)) if trained_word(idx) and not is_word_active(idx)]
-  weights = [1 if not trained_word(idx) else 0.5 * (0.95 ** (collection[idx]["score"] / REPETITIONS_TO_TRAIN)) for idx in words]
+  words = [
+    idx for idx in range(len(collection))
+    if not trained_word(idx) and not is_word_active(idx)
+  ][:POOL_SIZE]
+  words += [
+    idx for idx in range(len(collection))
+    if trained_word(idx) and not is_word_active(idx)
+  ]
+  weights = [
+    1 if not trained_word(idx) else
+      0.5 * (0.95 ** (collection[idx]["score"] / REPETITIONS_TO_TRAIN))
+    for idx in words
+  ]
   return random.choices(words, weights)[0]
 
 
@@ -87,7 +105,9 @@ def render_buttons():
   for side in ["left", "right"]:
     for button, state in zip(buttons[side], words_state[side]):
       button.setText("")
-      button.setStyleSheet(f'QPushButton {{background-color: #{state_to_color[state]}; font: 24px;}}')
+      button.setStyleSheet(
+        f'QPushButton {{background-color: #{state_to_color[state]}; font: 24px;}}'
+      )
   for word in active_words:
     buttons["left"][word.left_offset].setText(collection[word.index]["words"][0])
     buttons["right"][word.right_offset].setText(collection[word.index]["words"][1])
@@ -131,7 +151,7 @@ def on_button_click(label, idx):
       same_column = active_button and active_button[0] == label
       if same_column:
         words_state[label][active_button[1]] = HAS_WORD
-      if active_button == None or same_column:
+      if active_button is None or same_column:
         active_button = current_idx
         words_state[label][idx] = CHOOSEN
         return
@@ -172,15 +192,15 @@ class CreateListDialog(QDialog):
     super(CreateListDialog, self).__init__()
     self.ui = ui_create_list.Ui_Dialog()
     self.ui.setupUi(self)
-    self.accepted.connect(lambda : self.try_to_create_list())
+    self.accepted.connect(self.try_to_create_list)
     self.main_window = main_window
     self.main_window.setStatusTip("")
 
   def try_to_create_list(self):
-    folderPath = pathlib.Path(LISTS_FOLDER)
-    folderPath.mkdir(exist_ok=True)
+    folder_path = pathlib.Path(LISTS_FOLDER)
+    folder_path.mkdir(exist_ok=True)
     list_name = self.ui.listName.text()
-    list_path = folderPath / (list_name + ".json")
+    list_path = folder_path / (list_name + ".json")
     if list_path.exists():
       self.main_window.setStatusTip(f"Список {list_name} уже существует.")
     else:
@@ -196,8 +216,10 @@ class OpenListDialog(QDialog):
     super(OpenListDialog, self).__init__()
     self.ui = ui_open_list.Ui_Dialog()
     self.ui.setupUi(self)
-    self.ui.ListOfLists.addItems(x.rsplit(".")[0] for x in os.listdir(LISTS_FOLDER) if x.endswith("json"))
-    self.accepted.connect(lambda : self.open_list())
+    self.ui.ListOfLists.addItems(
+      x.rsplit(".")[0] for x in os.listdir(LISTS_FOLDER) if x.endswith("json")
+    )
+    self.accepted.connect(self.open_list)
     self.main_window = main_window
     self.main_window.setStatusTip("")
 
@@ -215,11 +237,11 @@ class AddWordDialog(QDialog):
     super(AddWordDialog, self).__init__()
     self.ui = ui_add_word.Ui_Dialog()
     self.ui.setupUi(self)
-    self.accepted.connect(lambda : self.add_word())
+    self.accepted.connect(self.add_word)
     self.main_window = main_window
     self.main_window.setStatusTip("")
-    self.ui.word1.textChanged.connect(lambda : self.update_accept_button_state())
-    self.ui.word2.textChanged.connect(lambda : self.update_accept_button_state())
+    self.ui.word1.textChanged.connect(self.update_accept_button_state)
+    self.ui.word2.textChanged.connect(self.update_accept_button_state)
     self.update_accept_button_state()
 
   def update_accept_button_state(self):
@@ -246,7 +268,7 @@ class ChangeListDialog(QDialog):
     super(ChangeListDialog, self).__init__()
     self.ui = ui_edit_words_list.Ui_Dialog()
     self.ui.setupUi(self)
-    self.accepted.connect(lambda : self.save_list())
+    self.accepted.connect(self.save_list)
     self.main_window = main_window
     self.main_window.setStatusTip("")
     self.removed_words = []
@@ -262,7 +284,9 @@ class ChangeListDialog(QDialog):
         continue
       new_collection.append(word)
       for i in range(2):
-        new_collection[-1]["words"][i] = self.ui.words_list.itemAtPosition(row, i + 1).widget().text()
+        new_collection[-1]["words"][i] = (
+          self.ui.words_list.itemAtPosition(row, i + 1).widget().text()
+        )
       row += 1
     collection = new_collection
     dump_list()
@@ -271,7 +295,9 @@ class ChangeListDialog(QDialog):
     render_buttons()
 
   def rerender(self):
-    self.ui.label.setText(f"Список {active_list_name} содержит {len(collection) - len(self.removed_words)} слов")
+    self.ui.label.setText(
+      f"Список {active_list_name} содержит {len(collection) - len(self.removed_words)} слов"
+    )
     for i in reversed(range(self.ui.words_list.count())):
       self.ui.words_list.itemAt(i).widget().deleteLater()
     row = 0
@@ -300,11 +326,11 @@ class FinishTrainDialog(QDialog):
     super(FinishTrainDialog, self).__init__()
     self.ui = ui_train_finish.Ui_Dialog()
     self.ui.setupUi(self)
-    self.finished.connect(lambda : self.finish_train())
+    self.finished.connect(self.finish_train)
     self.ui.correct_words_count.setText(str(score))
     self.ui.errors_count.setText(str(errors))
     self.ui.correctness_percentage.setText(str(round(score / (score + errors) * 100, 2)))
-    self.ui.train_time.setText(str(datetime.datetime.now() - train_start).split(".")[0])
+    self.ui.train_time.setText(str(datetime.datetime.now() - train_start).split(".", maxsplit=1)[0])
     self.ui.learned_count.setText(str(len([x for x in range(len(collection)) if trained_word(x)])))
 
   def finish_train(self):
@@ -314,15 +340,18 @@ class FinishTrainDialog(QDialog):
 
 
 def has_lists():
-  return pathlib.Path(LISTS_FOLDER).exists() and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
+  return (
+    pathlib.Path(LISTS_FOLDER).exists()
+    and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
+  )
 
 
 def can_modify_list():
-  return has_lists() and active_list_name != None
+  return has_lists() and active_list_name is not None
 
 
 def can_start_train():
-  return has_lists() and active_list_name != None and len(collection) >= CARDS_COUNT
+  return has_lists() and active_list_name is not None and len(collection) >= CARDS_COUNT
 
 
 def update_menu_state(main_window):
