@@ -6,7 +6,7 @@ import random
 import json
 import datetime
 
-from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton, QLineEdit, QLabel
+from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QPushButton, QLineEdit, QLabel, QDialogButtonBox
 
 import ui_create_list
 import ui_main_window
@@ -218,6 +218,18 @@ class AddWordDialog(QDialog):
     self.accepted.connect(lambda : self.add_word())
     self.main_window = main_window
     self.main_window.setStatusTip("")
+    self.ui.word1.textChanged.connect(lambda : self.update_accept_button_state())
+    self.ui.word2.textChanged.connect(lambda : self.update_accept_button_state())
+    self.update_accept_button_state()
+
+  def update_accept_button_state(self):
+    acceptable = (
+      self.ui.word1.text() != ""
+      and self.ui.word2.text() != ""
+      and not any(self.ui.word1.text() in x["words"] for x in collection)
+      and not any(self.ui.word2.text() in x["words"] for x in collection)
+    )
+    self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(acceptable)
 
   def add_word(self):
     word1 = self.ui.word1.text()
