@@ -17,9 +17,7 @@ from PySide6.QtWidgets import (
   QFileDialog,
 )
 
-import ui_create_list
 import ui_main_window
-import ui_open_list
 import ui_add_word
 import ui_train_finish
 import ui_edit_words_list
