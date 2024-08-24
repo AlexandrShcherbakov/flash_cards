@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
   QLineEdit,
   QLabel,
   QDialogButtonBox,
+  QFileDialog,
 )
 
 import ui_create_list
@@ -32,8 +33,6 @@ POOL_SIZE = 25
 EMPTY = 0
 HAS_WORD = 1
 CHOOSEN = 2
-
-LISTS_FOLDER = "./lists"
 
 state_to_color = [
   "BFB5B9",
@@ -57,7 +56,7 @@ class Context:
     self.collection = []
     self.score = 0
     self.errors = 0
-    self.active_list_name = None
+    self.active_list_path = None
     self.active_button = None
     self.train_start = None
 
@@ -84,10 +83,14 @@ class Context:
   @property
   def words_to_fill(self):
     return CARDS_COUNT - len(self.active_words)
-
+  
   @property
-  def active_list_path(self):
-    return pathlib.Path(LISTS_FOLDER) / (self.active_list_name + ".json")
+  def active_list_name(self):
+    return self.active_list_path.name.rsplit(".", maxsplit=1)[0]
+  
+  @property
+  def has_list(self):
+    return self.active_list_path is not None
 
   def dump_list(self):
     with self.active_list_path.open("w") as fout:
@@ -199,49 +202,6 @@ def on_button_click(label, idx):
     finally:
       render_buttons()
   return process_click
-
-
-class CreateListDialog(QDialog):
-  def __init__(self, main_window):
-    super(CreateListDialog, self).__init__()
-    self.ui = ui_create_list.Ui_Dialog()
-    self.ui.setupUi(self)
-    self.accepted.connect(self.try_to_create_list)
-    self.main_window = main_window
-    self.main_window.setStatusTip("")
-
-  def try_to_create_list(self):
-    folder_path = pathlib.Path(LISTS_FOLDER)
-    folder_path.mkdir(exist_ok=True)
-    list_name = self.ui.listName.text()
-    list_path = folder_path / (list_name + ".json")
-    if list_path.exists():
-      self.main_window.setStatusTip(f"Список {list_name} уже существует.")
-    else:
-      list_path.touch()
-      self.main_window.setStatusTip(f"Список {list_name} создан.")
-      CONTEXT.active_list_name = list_name
-    update_menu_state(self.main_window)
-
-
-class OpenListDialog(QDialog):
-  def __init__(self, main_window):
-    super(OpenListDialog, self).__init__()
-    self.ui = ui_open_list.Ui_Dialog()
-    self.ui.setupUi(self)
-    self.ui.ListOfLists.addItems(
-      x.rsplit(".")[0] for x in os.listdir(LISTS_FOLDER) if x.endswith("json")
-    )
-    self.accepted.connect(self.open_list)
-    self.main_window = main_window
-    self.main_window.setStatusTip("")
-
-  def open_list(self):
-    list_name = self.ui.ListOfLists.currentText()
-    CONTEXT.active_list_name = list_name
-    self.main_window.setStatusTip(f"Выбран список {list_name}.")
-    CONTEXT.load_list()
-    update_menu_state(self.main_window)
 
 
 class AddWordDialog(QDialog):
@@ -358,27 +318,15 @@ class FinishTrainDialog(QDialog):
     render_buttons()
 
 
-def has_lists():
-  return (
-    pathlib.Path(LISTS_FOLDER).exists()
-    and any(x.endswith("json") for x in os.listdir(LISTS_FOLDER))
-  )
-
-
 def can_modify_list():
-  return has_lists() and CONTEXT.active_list_name is not None
+  return CONTEXT.has_list
 
 
 def can_start_train():
-  return (
-    has_lists()
-    and CONTEXT.active_list_name is not None
-    and len(CONTEXT.collection) >= CARDS_COUNT
-  )
+  return (CONTEXT.has_list and len(CONTEXT.collection) >= CARDS_COUNT)
 
 
 def update_menu_state(main_window):
-  main_window.ui.open_list.setVisible(has_lists())
   main_window.ui.add_word.setVisible(can_modify_list())
   main_window.ui.start_train.setVisible(can_start_train())
   main_window.ui.change_list.setVisible(can_modify_list())
@@ -399,8 +347,8 @@ class App(QMainWindow):
     super(App, self).__init__()
     self.ui = ui_main_window.Ui_MainWindow()
     self.ui.setupUi(self)
-    self.ui.createList.triggered.connect(lambda : CreateListDialog(self).exec())
-    self.ui.open_list.triggered.connect(lambda : OpenListDialog(self).exec())
+    self.ui.createList.triggered.connect(self.create_list)
+    self.ui.open_list.triggered.connect(self.open_list)
     self.ui.add_word.triggered.connect(lambda : AddWordDialog(self).exec())
     self.ui.change_list.triggered.connect(lambda : ChangeListDialog(self).exec())
     self.ui.start_train.triggered.connect(start_train)
@@ -413,6 +361,34 @@ class App(QMainWindow):
         button.clicked.connect(on_button_click(side, index))
 
     update_menu_state(self)
+
+  def create_list(self):
+    self.setToolTip("")
+    dialog = QFileDialog()
+    dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+    dialog.setNameFilter("JSON files (*.json)")
+    if dialog.exec():
+      list_path = pathlib.Path(dialog.selectedFiles()[0])
+      try:
+        if list_path.exists():
+          self.setStatusTip(f"Список {list_path} уже существует.")
+          return
+        list_path.touch()
+        CONTEXT.active_list_path = list_path
+        self.setStatusTip(f"Список {CONTEXT.active_list_name} создан.")
+      finally:
+        update_menu_state(self)
+
+  def open_list(self):
+    self.setToolTip("")
+    dialog = QFileDialog()
+    dialog.setFileMode(QFileDialog.ExistingFile)
+    dialog.setNameFilter("JSON files (*.json)")
+    if dialog.exec():
+      CONTEXT.active_list_path = pathlib.Path(dialog.selectedFiles()[0])
+      self.setToolTip(f"Выбран список {CONTEXT.active_list_name}.")
+      CONTEXT.load_list()
+      update_menu_state(self)
 
 
 if __name__ == "__main__":
