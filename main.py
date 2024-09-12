@@ -81,11 +81,11 @@ class Context:
   @property
   def words_to_fill(self):
     return CARDS_COUNT - len(self.active_words)
-  
+
   @property
   def active_list_name(self):
     return self.active_list_path.name.rsplit(".", maxsplit=1)[0]
-  
+
   @property
   def has_list(self):
     return self.active_list_path is not None
@@ -371,8 +371,8 @@ class App(QMainWindow):
         if list_path.exists():
           self.setStatusTip(f"Список {list_path} уже существует.")
           return
-        list_path.touch()
         CONTEXT.active_list_path = list_path
+        CONTEXT.dump_list()
         self.setStatusTip(f"Список {CONTEXT.active_list_name} создан.")
       finally:
         update_menu_state(self)
