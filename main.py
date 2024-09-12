@@ -1,5 +1,4 @@
 import pathlib
-import os
 import sys
 import dataclasses
 import random
@@ -91,11 +90,11 @@ class Context:
     return self.active_list_path is not None
 
   def dump_list(self):
-    with self.active_list_path.open("w") as fout:
+    with self.active_list_path.open("w", encoding="utf-8") as fout:
       fout.write(json.dumps(self.collection))
 
   def load_list(self):
-    with self.active_list_path.open("r") as fin:
+    with self.active_list_path.open("r", encoding="utf-8") as fin:
       self.collection = json.loads(fin.read())
 
 
