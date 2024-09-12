@@ -206,7 +206,7 @@ class AddWordDialog(QDialog):
     super(AddWordDialog, self).__init__()
     self.ui = ui_add_word.Ui_Dialog()
     self.ui.setupUi(self)
-    self.accepted.connect(self.add_word)
+    self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Save).clicked.connect(self.add_word)
     self.main_window = main_window
     self.main_window.setStatusTip("")
     self.ui.word1.textChanged.connect(self.update_accept_button_state)
@@ -220,7 +220,7 @@ class AddWordDialog(QDialog):
       and not any(self.ui.word1.text() in x["words"] for x in CONTEXT.collection)
       and not any(self.ui.word2.text() in x["words"] for x in CONTEXT.collection)
     )
-    self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(acceptable)
+    self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Save).setEnabled(acceptable)
 
   def add_word(self):
     word1 = self.ui.word1.text()
@@ -231,6 +231,8 @@ class AddWordDialog(QDialog):
       f"Слово/фраза {word1} теперь есть в списке {CONTEXT.active_list_name}."
     )
     update_menu_state(self.main_window)
+    self.ui.word1.setText("")
+    self.ui.word2.setText("")
 
 
 class ChangeListDialog(QDialog):
