@@ -47,6 +47,7 @@
      <string>Действия</string>
     </property>
     <addaction name="start_train"/>
+    <addaction name="spelling_train"/>
     <addaction name="createList"/>
     <addaction name="open_list"/>
     <addaction name="add_word"/>
@@ -83,6 +84,11 @@
   <action name="change_list">
    <property name="text">
     <string>Изменить коллекцию</string>
+   </property>
+  </action>
+  <action name="spelling_train">
+   <property name="text">
+    <string>Тренировка написания</string>
    </property>
   </action>
  </widget>

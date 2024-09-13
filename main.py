@@ -4,6 +4,8 @@ import dataclasses
 import random
 import json
 import datetime
+import unicodedata
+import re
 
 from PySide6.QtWidgets import (
   QApplication,
@@ -20,12 +22,16 @@ import ui_main_window
 import ui_add_word
 import ui_train_finish
 import ui_edit_words_list
+import ui_spelling_task
 
 
 CARDS_COUNT = 5
 TRAIN_LENGTH = 50
 REPETITIONS_TO_TRAIN = 20
 POOL_SIZE = 25
+
+SPELLING_REPETITIONS_TO_TRAIN = 20
+SPELLING_POOL_SIZE = 10
 
 EMPTY = 0
 HAS_WORD = 1
@@ -73,6 +79,9 @@ class Context:
 
   def is_trained_word(self, idx):
     return self.collection[idx]["score"] >= REPETITIONS_TO_TRAIN
+
+  def is_spelling_trained_word(self, idx):
+    return self.collection[idx].get("spelling_score", 0) >= SPELLING_REPETITIONS_TO_TRAIN
 
   def activate_word(self, left_idx, right_idx):
     self.active_words.append(ActiveWord(select_word(), left_idx, right_idx))
@@ -317,6 +326,94 @@ class FinishTrainDialog(QDialog):
     render_buttons()
 
 
+class SpellingTrainDialog(QDialog):
+  def __init__(self, main_window):
+    super(SpellingTrainDialog, self).__init__()
+    self.ui = ui_spelling_task.Ui_Dialog()
+    self.ui.setupUi(self)
+    self.main_window = main_window
+    self.main_window.setStatusTip("")
+    self.ui.check_answer_button.clicked.connect(self.check_answer)
+    self.ui.continue_button.clicked.connect(self.next_word)
+    self.check_if_input_is_empty()
+    self.ui.answer_field.textChanged.connect(self.check_if_input_is_empty)
+    self.ui.continue_button.setEnabled(False)
+    self.ui.answer_field.setEnabled(False)
+    words = [
+      idx for idx in range(len(CONTEXT.collection))
+      if not CONTEXT.is_spelling_trained_word(idx)
+    ][:SPELLING_POOL_SIZE]
+    words += [
+      idx for idx in range(len(CONTEXT.collection))
+      if CONTEXT.is_spelling_trained_word(idx)
+    ]
+    weights = [
+      1 if not CONTEXT.is_spelling_trained_word(idx) else
+        0.5 * (0.95 ** (CONTEXT.collection[idx].get("spelling_score") / SPELLING_REPETITIONS_TO_TRAIN))
+      for idx in words
+    ]
+    self.words_to_check = random.choices(words, weights, k=SPELLING_POOL_SIZE)
+    self.remove_current_word = False
+    greek_pattern = re.compile(r'[\u0370-\u03FF\u1F00-\u1FFF]')
+    english_pattern = re.compile(r'[a-zA-Z]')
+    if greek_pattern.search(CONTEXT.collection[self.words_to_check[0]]["words"][0]):
+      self.ref_idx = 1
+      self.ans_idx = 0
+    elif greek_pattern.search(CONTEXT.collection[self.words_to_check[1]]["words"][1]):
+      self.ref_idx = 0
+      self.ans_idx = 1
+    elif english_pattern.search(CONTEXT.collection[self.words_to_check[0]]["words"][0]):
+      self.ref_idx = 1
+      self.ans_idx = 0
+    else:
+      self.ref_idx = 0
+      self.ans_idx = 1
+    self.next_word()
+
+  def check_if_input_is_empty(self):
+    self.ui.check_answer_button.setEnabled(self.ui.answer_field.text() != "")
+
+  def check_answer(self):
+    self.ui.answer.setText(CONTEXT.collection[self.words_to_check[0]]["words"][self.ans_idx])
+    def normalize_word(word):
+      normalized_str = unicodedata.normalize('NFD', word.strip().lower())
+      filtered_str = ''.join(char for char in normalized_str if not unicodedata.combining(char))
+      return filtered_str
+
+    user_answer = normalize_word(self.ui.answer_field.text())
+    correct_answer = normalize_word(CONTEXT.collection[self.words_to_check[0]]["words"][self.ans_idx])
+    is_correct = user_answer == correct_answer
+    self.remove_current_word = is_correct
+    item_to_modify = CONTEXT.collection[self.words_to_check[0]]
+    self.ui.answer.setStyleSheet("color: green" if is_correct else "color: red")
+    if is_correct:
+      item_to_modify["spelling_score"] = item_to_modify.get("spelling_score", 0) + 1
+    else:
+      item_to_modify["spelling_score"] = item_to_modify.get("spelling_score", 0) - 1
+    if len(self.words_to_check) == 1 and self.remove_current_word:
+      self.ui.continue_button.clicked.disconnect()
+      self.ui.continue_button.clicked.connect(self.finish_train)
+      self.ui.continue_button.setText("Завершить")
+    self.ui.continue_button.setEnabled(True)
+    self.ui.check_answer_button.setEnabled(False)
+    self.ui.answer_field.setEnabled(False)
+
+  def next_word(self):
+    if self.remove_current_word:
+      self.words_to_check = self.words_to_check[1:]
+    else:
+      self.words_to_check = self.words_to_check[1:] + [self.words_to_check[0]]
+    self.ui.word_to_translate.setText(CONTEXT.collection[self.words_to_check[0]]["words"][self.ref_idx])
+    self.ui.answer_field.setText("")
+    self.ui.answer.setText("")
+    self.ui.answer_field.setEnabled(True)
+    self.ui.continue_button.setEnabled(False)
+
+  def finish_train(self):
+    CONTEXT.dump_list()
+    self.close()
+
+
 def can_modify_list():
   return CONTEXT.has_list
 
@@ -329,6 +426,7 @@ def update_menu_state(main_window):
   main_window.ui.add_word.setVisible(can_modify_list())
   main_window.ui.start_train.setVisible(can_start_train())
   main_window.ui.change_list.setVisible(can_modify_list())
+  main_window.ui.spelling_train.setVisible(can_start_train())
 
 
 def reset_stats():
@@ -351,6 +449,7 @@ class App(QMainWindow):
     self.ui.add_word.triggered.connect(lambda : AddWordDialog(self).exec())
     self.ui.change_list.triggered.connect(lambda : ChangeListDialog(self).exec())
     self.ui.start_train.triggered.connect(start_train)
+    self.ui.spelling_train.triggered.connect(lambda : SpellingTrainDialog(self).exec())
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
         button = QPushButton()
