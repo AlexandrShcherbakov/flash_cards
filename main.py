@@ -223,13 +223,20 @@ class AddWordDialog(QDialog):
     self.update_accept_button_state()
 
   def update_accept_button_state(self):
+    word1_present = any(self.ui.word1.text() in x["words"] for x in CONTEXT.collection)
+    word2_present = any(self.ui.word2.text() in x["words"] for x in CONTEXT.collection)
     acceptable = (
       self.ui.word1.text() != ""
       and self.ui.word2.text() != ""
-      and not any(self.ui.word1.text() in x["words"] for x in CONTEXT.collection)
-      and not any(self.ui.word2.text() in x["words"] for x in CONTEXT.collection)
+      and not word1_present
+      and not word2_present
     )
     self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Save).setEnabled(acceptable)
+    self.ui.status_label.setText("")
+    if word1_present:
+      self.ui.status_label.setText(f"Слово {self.ui.word1.text()} уже есть в коллекции")
+    elif word2_present:
+      self.ui.status_label.setText(f"Слово {self.ui.word2.text()} уже есть в коллекции")
 
   def add_word(self):
     word1 = self.ui.word1.text()
@@ -242,6 +249,7 @@ class AddWordDialog(QDialog):
     update_menu_state(self.main_window)
     self.ui.word1.setText("")
     self.ui.word2.setText("")
+    self.ui.status_label.setText("Слово добавлено")
 
 
 class ChangeListDialog(QDialog):

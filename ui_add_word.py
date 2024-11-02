@@ -23,7 +23,7 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(382, 81)
+        Dialog.resize(382, 107)
         self.buttonBox = QDialogButtonBox(Dialog)
         self.buttonBox.setObjectName(u"buttonBox")
         self.buttonBox.setGeometry(QRect(290, 20, 81, 241))
@@ -55,6 +55,9 @@ class Ui_Dialog(object):
 
         self.formLayout.setWidget(1, QFormLayout.FieldRole, self.word2)
 
+        self.status_label = QLabel(Dialog)
+        self.status_label.setObjectName(u"status_label")
+        self.status_label.setGeometry(QRect(10, 80, 361, 16))
 
         self.retranslateUi(Dialog)
         self.buttonBox.rejected.connect(Dialog.reject)
@@ -66,5 +69,6 @@ class Ui_Dialog(object):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Dialog", None))
         self.label.setText(QCoreApplication.translate("Dialog", u"\u0421\u043b\u043e\u0432\u043e \u0438\u043b\u0438 \u0444\u0440\u0430\u0437\u0430", None))
         self.label_2.setText(QCoreApplication.translate("Dialog", u"\u041f\u0435\u0440\u0435\u0432\u043e\u0434", None))
+        self.status_label.setText(QCoreApplication.translate("Dialog", u"TextLabel", None))
     # retranslateUi
 
