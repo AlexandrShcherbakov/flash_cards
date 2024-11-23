@@ -48,6 +48,8 @@ buttons = {
   "right": [],
 }
 
+greek_pattern = re.compile(r'[\u0370-\u03FF\u1F00-\u1FFF]')
+english_pattern = re.compile(r'[a-zA-Z]')
 
 class Context:
   def __init__(self):
@@ -98,13 +100,27 @@ class Context:
   def has_list(self):
     return self.active_list_path is not None
 
+  def auto_correction(self):
+    for record in self.collection:
+      word1, word2 = record["words"]
+      if greek_pattern.search(word1):
+        record["words"] = [word2, word1]
+      elif greek_pattern.search(word2):
+        record["words"] = [word1, word2]
+      elif english_pattern.search(word1):
+        record["words"] = [word2, word1]
+      elif english_pattern.search(word2):
+        record["words"] = [word1, word2]
+
   def dump_list(self):
+    self.auto_correction()
     with self.active_list_path.open("w", encoding="utf-8") as fout:
       fout.write(json.dumps(self.collection))
 
   def load_list(self):
     with self.active_list_path.open("r", encoding="utf-8") as fin:
       self.collection = json.loads(fin.read())
+    self.auto_correction()
 
 
 CONTEXT = Context()
@@ -362,8 +378,6 @@ class SpellingTrainDialog(QDialog):
     ]
     self.words_to_check = random.choices(words, weights, k=SPELLING_POOL_SIZE)
     self.remove_current_word = False
-    greek_pattern = re.compile(r'[\u0370-\u03FF\u1F00-\u1FFF]')
-    english_pattern = re.compile(r'[a-zA-Z]')
     if greek_pattern.search(CONTEXT.collection[self.words_to_check[0]]["words"][0]):
       self.ref_idx = 1
       self.ans_idx = 0
