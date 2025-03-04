@@ -140,6 +140,10 @@ def select_word():
       0.5 * (0.95 ** (CONTEXT.collection[idx]["score"] / REPETITIONS_TO_TRAIN))
     for idx in words
   ]
+  sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / POOL_SIZE
+  if sum_of_trainded_weights < 1:
+    sum_of_trainded_weights = 1
+  weights = [1 if weight == 1 else weight / sum_of_trainded_weights for weight in weights]
   return random.choices(words, weights)[0]
 
 
@@ -376,6 +380,10 @@ class SpellingTrainDialog(QDialog):
         0.5 * (0.95 ** (CONTEXT.collection[idx].get("spelling_score") / SPELLING_REPETITIONS_TO_TRAIN))
       for idx in words
     ]
+    sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / SPELLING_POOL_SIZE
+    if sum_of_trainded_weights < 1:
+      sum_of_trainded_weights = 1
+    weights = [1 if weight == 1 else weight / sum_of_trainded_weights for weight in weights]
     self.words_to_check = random.choices(words, weights, k=SPELLING_POOL_SIZE)
     self.remove_current_word = False
     if greek_pattern.search(CONTEXT.collection[self.words_to_check[0]]["words"][0]):
