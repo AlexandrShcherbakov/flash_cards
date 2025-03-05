@@ -318,7 +318,7 @@ class ChangeListDialog(QDialog):
         word_edit = QLineEdit()
         word_edit.setText(word["words"][i])
         self.ui.words_list.addWidget(word_edit, row, i + 1)
-      self.ui.words_list.addWidget(QLabel(str(word["score"])), row, 3)
+      self.ui.words_list.addWidget(QLabel(str(word["score"]) + "/" + str(word.get("spelling_score", 0))), row, 3)
       remove_button = QPushButton("Удалить")
       def gen_remove_callback(dialog, index):
         def remove_item():
