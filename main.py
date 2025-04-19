@@ -281,6 +281,31 @@ class ChangeListDialog(QDialog):
     self.main_window = main_window
     self.main_window.setStatusTip("")
     self.removed_words = []
+    self.word_edits = []
+    self.scores = []
+
+    for index, word in enumerate(CONTEXT.collection):
+      self.ui.words_list.addWidget(QLabel(str(index)), index, 0)
+      self.word_edits.append([])
+      for i in range(2):
+        word_edit = QLineEdit()
+        self.word_edits[-1].append(word_edit)
+        self.ui.words_list.addWidget(word_edit, index, i + 1)
+      self.scores.append(QLabel())
+      self.ui.words_list.addWidget(self.scores[-1], index, 3)
+      remove_button = QPushButton("Удалить")
+      def gen_remove_callback(dialog, idx):
+        def remove_item():
+          updated_idx = idx
+          for i in sorted(dialog.removed_words):
+            if updated_idx >= i:
+              updated_idx += 1
+          dialog.removed_words.append(updated_idx)
+          dialog.rerender()
+        return remove_item
+      remove_button.clicked.connect(gen_remove_callback(self, index))
+      self.ui.words_list.addWidget(remove_button, index, 4)
+
     self.rerender()
 
   def save_list(self):
@@ -307,26 +332,21 @@ class ChangeListDialog(QDialog):
       f"Список {CONTEXT.active_list_name} содержит "
       + f"{len(CONTEXT.collection) - len(self.removed_words)} слов"
     )
-    for i in reversed(range(self.ui.words_list.count())):
-      self.ui.words_list.itemAt(i).widget().deleteLater()
+    for i in reversed(range(len(CONTEXT.collection) - len(self.removed_words), self.ui.words_list.rowCount())):
+      for j in reversed(range(self.ui.words_list.columnCount())):
+        index = self.ui.words_list.indexOf(self.ui.words_list.itemAtPosition(i, j))
+        if item := self.ui.words_list.takeAt(index):
+          widget = item.widget()
+          self.ui.words_list.removeWidget(widget)
+          widget.deleteLater()
+          del item
     row = 0
     for index, word in enumerate(CONTEXT.collection):
       if index in self.removed_words:
         continue
-      self.ui.words_list.addWidget(QLabel(str(row)), row, 0)
       for i in range(2):
-        word_edit = QLineEdit()
-        word_edit.setText(word["words"][i])
-        self.ui.words_list.addWidget(word_edit, row, i + 1)
-      self.ui.words_list.addWidget(QLabel(str(word["score"]) + "/" + str(word.get("spelling_score", 0))), row, 3)
-      remove_button = QPushButton("Удалить")
-      def gen_remove_callback(dialog, index):
-        def remove_item():
-          dialog.removed_words.append(index)
-          dialog.rerender()
-        return remove_item
-      remove_button.clicked.connect(gen_remove_callback(self, index))
-      self.ui.words_list.addWidget(remove_button, row, 4)
+        self.word_edits[row][i].setText(word["words"][i])
+      self.scores[row].setText(str(word["score"]) + "/" + str(word.get("spelling_score", 0)))
       row += 1
 
 
