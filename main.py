@@ -324,7 +324,7 @@ class ChangeListDialog(QDialog):
     self.word_edits = []
     self.scores = []
 
-    for index, word in enumerate(CONTEXT.collection):
+    for index in range(len(CONTEXT.collection)):
       self.ui.words_list.addWidget(QLabel(str(index)), index, 0)
       self.word_edits.append([])
       for i in range(2):
