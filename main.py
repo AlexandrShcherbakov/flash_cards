@@ -6,6 +6,7 @@ import json
 import datetime
 import unicodedata
 import re
+import os
 
 from PySide6.QtWidgets import (
   QApplication,
@@ -16,6 +17,10 @@ from PySide6.QtWidgets import (
   QLabel,
   QDialogButtonBox,
   QFileDialog,
+  QFormLayout,
+  QVBoxLayout,
+  QSpinBox,
+  QWidget,
 )
 
 import ui_main_window
@@ -23,15 +28,50 @@ import ui_add_word
 import ui_train_finish
 import ui_edit_words_list
 import ui_spelling_task
+import ui_settings
 
 
 CARDS_COUNT = 5
-TRAIN_LENGTH = 50
-REPETITIONS_TO_TRAIN = 20
-POOL_SIZE = 25
 
-SPELLING_REPETITIONS_TO_TRAIN = 20
-SPELLING_POOL_SIZE = 10
+LOCALIZATION = {
+  "train_length": "Количество слов для тренировки",
+  "repetitions_to_train": "Количество повторений для выучивания",
+  "active_pool_size": "Количество активно изучаемых новых слов",
+  "cards": "Упржнение с карточками",
+  "spelling": "Упражнение с написанием перевода",
+}
+
+@dataclasses.dataclass
+class ExcerciseSettings:
+  train_length : int = 50
+  repetitions_to_train : int = 20
+  active_pool_size : int = 25
+
+
+@dataclasses.dataclass
+class Settings:
+  cards : ExcerciseSettings = ExcerciseSettings()
+  spelling : ExcerciseSettings = ExcerciseSettings(20, 20, 10)
+
+
+SETTINGS_FILENAME = "settings.json"
+
+def load_settings():
+  settings = Settings()
+  if os.path.exists(SETTINGS_FILENAME):
+    with open(SETTINGS_FILENAME, "r", encoding="utf-8") as fin:
+      settings_json = json.loads(fin.read())
+      for excersize, ex_settings in settings_json.items():
+        setattr(settings, excersize, ExcerciseSettings(**ex_settings))
+  return settings
+
+
+def save_settings():
+  with open(SETTINGS_FILENAME, "w", encoding="utf-8") as fout:
+    fout.write(json.dumps(dataclasses.asdict(SETTINGS)))
+
+
+SETTINGS = load_settings()
 
 EMPTY = 0
 HAS_WORD = 1
@@ -80,10 +120,10 @@ class Context:
     return any(idx == x.index for x in self.active_words)
 
   def is_trained_word(self, idx):
-    return self.collection[idx]["score"] >= REPETITIONS_TO_TRAIN
+    return self.collection[idx]["score"] >= SETTINGS.cards.repetitions_to_train
 
   def is_spelling_trained_word(self, idx):
-    return self.collection[idx].get("spelling_score", 0) >= SPELLING_REPETITIONS_TO_TRAIN
+    return self.collection[idx].get("spelling_score", 0) >= SETTINGS.spelling.repetitions_to_train
 
   def activate_word(self, left_idx, right_idx):
     self.active_words.append(ActiveWord(select_word(), left_idx, right_idx))
@@ -130,17 +170,17 @@ def select_word():
   words = [
     idx for idx in range(len(CONTEXT.collection))
     if not CONTEXT.is_trained_word(idx) and not CONTEXT.is_word_active(idx)
-  ][:POOL_SIZE]
+  ][:SETTINGS.cards.active_pool_size]
   words += [
     idx for idx in range(len(CONTEXT.collection))
     if CONTEXT.is_trained_word(idx) and not CONTEXT.is_word_active(idx)
   ]
   weights = [
     1 if not CONTEXT.is_trained_word(idx) else
-      0.5 * (0.95 ** (CONTEXT.collection[idx]["score"] / REPETITIONS_TO_TRAIN))
+      0.5 * (0.95 ** (CONTEXT.collection[idx]["score"] / SETTINGS.cards.repetitions_to_train))
     for idx in words
   ]
-  sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / POOL_SIZE
+  sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / SETTINGS.cards.active_pool_size
   if sum_of_trainded_weights < 1:
     sum_of_trainded_weights = 1
   weights = [1 if weight == 1 else weight / sum_of_trainded_weights for weight in weights]
@@ -218,7 +258,7 @@ def on_button_click(label, idx):
         CONTEXT.words_state["right"][right_idx] = EMPTY
         CONTEXT.score += 1
         CONTEXT.collection[CONTEXT.active_words[word_idx].index]["score"] += 1
-        if CONTEXT.score == TRAIN_LENGTH:
+        if CONTEXT.score == SETTINGS.cards.train_length:
           FinishTrainDialog().exec()
           return
         CONTEXT.active_words = CONTEXT.active_words[:word_idx] + CONTEXT.active_words[word_idx + 1:]
@@ -390,21 +430,21 @@ class SpellingTrainDialog(QDialog):
     words = [
       idx for idx in range(len(CONTEXT.collection))
       if not CONTEXT.is_spelling_trained_word(idx)
-    ][:SPELLING_POOL_SIZE]
+    ][:SETTINGS.spelling.active_pool_size]
     words += [
       idx for idx in range(len(CONTEXT.collection))
       if CONTEXT.is_spelling_trained_word(idx)
     ]
     weights = [
       1 if not CONTEXT.is_spelling_trained_word(idx) else
-        0.5 * (0.95 ** (CONTEXT.collection[idx].get("spelling_score") / SPELLING_REPETITIONS_TO_TRAIN))
+        0.5 * (0.95 ** (CONTEXT.collection[idx].get("spelling_score") / SETTINGS.spelling.repetitions_to_train))
       for idx in words
     ]
-    sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / SPELLING_POOL_SIZE
+    sum_of_trainded_weights = sum([0 if weight == 1 else weight for weight in weights]) / SETTINGS.spelling.active_pool_size
     if sum_of_trainded_weights < 1:
       sum_of_trainded_weights = 1
     weights = [1 if weight == 1 else weight / sum_of_trainded_weights for weight in weights]
-    self.words_to_check = random.choices(words, weights, k=SPELLING_POOL_SIZE)
+    self.words_to_check = random.choices(words, weights, k=SETTINGS.spelling.train_length)
     self.remove_current_word = False
     if greek_pattern.search(CONTEXT.collection[self.words_to_check[0]]["words"][0]):
       self.ref_idx = 1
@@ -489,6 +529,29 @@ def start_train():
   CONTEXT.train_start = datetime.datetime.now()
 
 
+class SettingsDialog(QDialog):
+  def __init__(self):
+    super(SettingsDialog, self).__init__()
+    self.ui = ui_settings.Ui_Dialog()
+    self.ui.setupUi(self)
+    layout = QVBoxLayout()
+    for excersize, params in dataclasses.asdict(SETTINGS).items():
+      layout.addWidget(QLabel(LOCALIZATION[excersize]))
+      form = QFormLayout()
+      for parameter, value in params.items():
+        spin_box = QSpinBox()
+        spin_box.setValue(value)
+        def generate_value_update(excers, param_name):
+          return lambda i : setattr(excers, param_name, i)
+        spin_box.valueChanged.connect(generate_value_update(getattr(SETTINGS, excersize), parameter))
+        form.addRow(LOCALIZATION[parameter], spin_box)
+      form_widget = QWidget()
+      form_widget.setLayout(form)
+      layout.addWidget(form_widget)
+    self.setLayout(layout)
+    self.finished.connect(save_settings)
+
+
 class App(QMainWindow):
   def __init__(self):
     super(App, self).__init__()
@@ -500,6 +563,7 @@ class App(QMainWindow):
     self.ui.change_list.triggered.connect(lambda : ChangeListDialog(self).exec())
     self.ui.start_train.triggered.connect(start_train)
     self.ui.spelling_train.triggered.connect(lambda : SpellingTrainDialog(self).exec())
+    self.ui.settings.triggered.connect(lambda : SettingsDialog().exec())
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
         button = QPushButton()

@@ -53,7 +53,14 @@
     <addaction name="add_word"/>
     <addaction name="change_list"/>
    </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>Настройки</string>
+    </property>
+    <addaction name="settings"/>
+   </widget>
    <addaction name="menu"/>
+   <addaction name="menu_2"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="createList">
@@ -89,6 +96,11 @@
   <action name="spelling_train">
    <property name="text">
     <string>Тренировка написания</string>
+   </property>
+  </action>
+  <action name="settings">
+   <property name="text">
+    <string>Изменить</string>
    </property>
   </action>
  </widget>

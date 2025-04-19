@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'main_window.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.6.3
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -39,6 +39,8 @@ class Ui_MainWindow(object):
         self.change_list.setObjectName(u"change_list")
         self.spelling_train = QAction(MainWindow)
         self.spelling_train.setObjectName(u"spelling_train")
+        self.settings = QAction(MainWindow)
+        self.settings.setObjectName(u"settings")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayoutWidget = QWidget(self.centralwidget)
@@ -63,18 +65,22 @@ class Ui_MainWindow(object):
         self.menubar.setGeometry(QRect(0, 0, 720, 22))
         self.menu = QMenu(self.menubar)
         self.menu.setObjectName(u"menu")
+        self.menu_2 = QMenu(self.menubar)
+        self.menu_2.setObjectName(u"menu_2")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
         self.menubar.addAction(self.menu.menuAction())
+        self.menubar.addAction(self.menu_2.menuAction())
         self.menu.addAction(self.start_train)
         self.menu.addAction(self.spelling_train)
         self.menu.addAction(self.createList)
         self.menu.addAction(self.open_list)
         self.menu.addAction(self.add_word)
         self.menu.addAction(self.change_list)
+        self.menu_2.addAction(self.settings)
 
         self.retranslateUi(MainWindow)
 
@@ -90,6 +96,8 @@ class Ui_MainWindow(object):
         self.start_train.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0447\u0430\u0442\u044c \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443", None))
         self.change_list.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044e", None))
         self.spelling_train.setText(QCoreApplication.translate("MainWindow", u"\u0422\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0430 \u043d\u0430\u043f\u0438\u0441\u0430\u043d\u0438\u044f", None))
+        self.settings.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f", None))
+        self.menu_2.setTitle(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", None))
     # retranslateUi
 
