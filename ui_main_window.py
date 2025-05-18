@@ -41,6 +41,8 @@ class Ui_MainWindow(object):
         self.spelling_train.setObjectName(u"spelling_train")
         self.settings = QAction(MainWindow)
         self.settings.setObjectName(u"settings")
+        self.network_settings = QAction(MainWindow)
+        self.network_settings.setObjectName(u"network_settings")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayoutWidget = QWidget(self.centralwidget)
@@ -81,6 +83,7 @@ class Ui_MainWindow(object):
         self.menu.addAction(self.add_word)
         self.menu.addAction(self.change_list)
         self.menu_2.addAction(self.settings)
+        self.menu_2.addAction(self.network_settings)
 
         self.retranslateUi(MainWindow)
 
@@ -96,7 +99,8 @@ class Ui_MainWindow(object):
         self.start_train.setText(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0447\u0430\u0442\u044c \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443", None))
         self.change_list.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044e", None))
         self.spelling_train.setText(QCoreApplication.translate("MainWindow", u"\u0422\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0430 \u043d\u0430\u043f\u0438\u0441\u0430\u043d\u0438\u044f", None))
-        self.settings.setText(QCoreApplication.translate("MainWindow", u"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c", None))
+        self.settings.setText(QCoreApplication.translate("MainWindow", u"\u0423\u043f\u0440\u0430\u0436\u043d\u0435\u043d\u0438\u044f", None))
+        self.network_settings.setText(QCoreApplication.translate("MainWindow", u"\u0421\u0435\u0442\u044c", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f", None))
         self.menu_2.setTitle(QCoreApplication.translate("MainWindow", u"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", None))
     # retranslateUi

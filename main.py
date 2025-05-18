@@ -7,6 +7,10 @@ import datetime
 import unicodedata
 import re
 import os
+import concurrent.futures
+
+from paramiko import SSHClient
+from scp import SCPClient
 
 from PySide6.QtWidgets import (
   QApplication,
@@ -29,6 +33,7 @@ import ui_train_finish
 import ui_edit_words_list
 import ui_spelling_task
 import ui_settings
+import ui_net_settings
 
 
 CARDS_COUNT = 5
@@ -53,11 +58,19 @@ class Settings:
   cards : ExcerciseSettings = ExcerciseSettings()
   spelling : ExcerciseSettings = ExcerciseSettings(20, 20, 10)
 
+@dataclasses.dataclass
+class NetSettings:
+  ip : str = ""
+  user : str = ""
 
+
+REMOTE_FOLDER_NAME = "flash_cards"
 SETTINGS_FILENAME = "settings.json"
+NETWORK_SETTINGS_FILENAME = "network.json"
 
 def load_settings():
   settings = Settings()
+  local_sync_file(SETTINGS_FILENAME)
   if os.path.exists(SETTINGS_FILENAME):
     with open(SETTINGS_FILENAME, "r", encoding="utf-8") as fin:
       settings_json = json.loads(fin.read())
@@ -69,8 +82,56 @@ def load_settings():
 def save_settings():
   with open(SETTINGS_FILENAME, "w", encoding="utf-8") as fout:
     fout.write(json.dumps(dataclasses.asdict(SETTINGS)))
+  remote_sync_file(SETTINGS_FILENAME)
 
 
+def load_net_settings():
+  settings = NetSettings()
+  if os.path.exists(NETWORK_SETTINGS_FILENAME):
+    with open(NETWORK_SETTINGS_FILENAME, "r", encoding="utf-8") as fin:
+      settings = NetSettings(**json.loads(fin.read()))
+      ssh.load_system_host_keys()
+      ssh.connect(settings.ip, username=settings.user)
+  return settings
+
+
+def save_net_settings():
+  ssh.load_system_host_keys()
+  ssh.connect(NET_SETTINGS.ip, username=NET_SETTINGS.user)
+  with open(NETWORK_SETTINGS_FILENAME, "w", encoding="utf-8") as fout:
+    fout.write(json.dumps(dataclasses.asdict(NET_SETTINGS)))
+
+
+def local_sync_file(filepath):
+  if not NET_SETTINGS.ip:
+    return
+  with SCPClient(ssh.get_transport()) as scp:
+    remote_path = f"{REMOTE_FOLDER_NAME}/{pathlib.Path(filepath).as_posix()}"
+    remote_ts = ssh.exec_command(f"stat -c %Y {remote_path}")[1].read().decode()
+    if remote_ts:
+      remote_time = int(remote_ts)
+      local_time = int(os.path.getmtime(filepath) if os.path.exists(filepath) else 0)
+      if remote_time >= local_time:
+        scp.get(remote_path, filepath, preserve_times=True)
+
+
+def remote_sync_file(filepath):
+  if not NET_SETTINGS.ip:
+    return
+  def impl(filepath):
+    with SCPClient(ssh.get_transport()) as scp:
+      local_path = pathlib.Path(filepath)
+      remote_subpath = local_path.as_posix()
+      remote_path = f"{REMOTE_FOLDER_NAME}/{remote_subpath}"
+      if os.path.exists(filepath):
+        ssh.exec_command(f"mkdir -p {REMOTE_FOLDER_NAME}/{local_path.parent.as_posix()}")
+        scp.put(filepath, remote_path, preserve_times=True)
+  return executor.submit(impl, filepath)
+
+
+ssh = SSHClient()
+executor = concurrent.futures.ThreadPoolExecutor()
+NET_SETTINGS = load_net_settings()
 SETTINGS = load_settings()
 
 EMPTY = 0
@@ -410,6 +471,7 @@ class FinishTrainDialog(QDialog):
 
   def finish_train(self):
     CONTEXT.dump_list()
+    remote_sync_file(CONTEXT.active_list_path.relative_to(os.getcwd()))
     reset_stats()
     render_buttons()
 
@@ -501,6 +563,7 @@ class SpellingTrainDialog(QDialog):
 
   def finish_train(self):
     CONTEXT.dump_list()
+    remote_sync_file(CONTEXT.active_list_path.relative_to(os.getcwd()))
     self.close()
 
 
@@ -551,6 +614,17 @@ class SettingsDialog(QDialog):
     self.setLayout(layout)
     self.finished.connect(save_settings)
 
+class NetSettingsDialog(QDialog):
+  def __init__(self):
+    super(NetSettingsDialog, self).__init__()
+    self.ui = ui_net_settings.Ui_NetSettings()
+    self.ui.setupUi(self)
+    self.ui.ip.setText(NET_SETTINGS.ip)
+    self.ui.username.setText(NET_SETTINGS.user)
+    self.ui.ip.textChanged.connect(lambda x: setattr(NET_SETTINGS, 'ip', x))
+    self.ui.username.textChanged.connect(lambda x: setattr(NET_SETTINGS, 'user', x))
+    self.accepted.connect(save_net_settings)
+
 
 class App(QMainWindow):
   def __init__(self):
@@ -564,6 +638,7 @@ class App(QMainWindow):
     self.ui.start_train.triggered.connect(start_train)
     self.ui.spelling_train.triggered.connect(lambda : SpellingTrainDialog(self).exec())
     self.ui.settings.triggered.connect(lambda : SettingsDialog().exec())
+    self.ui.network_settings.triggered.connect(lambda : NetSettingsDialog().exec())
     for index in range(CARDS_COUNT):
       for side in ["left", "right"]:
         button = QPushButton()
@@ -601,6 +676,7 @@ class App(QMainWindow):
       self.setToolTip(f"Выбран список {CONTEXT.active_list_name}.")
       CONTEXT.load_list()
       update_menu_state(self)
+      local_sync_file(CONTEXT.active_list_path.relative_to(os.getcwd()))
 
 
 if __name__ == "__main__":
@@ -609,4 +685,5 @@ if __name__ == "__main__":
   window = App()
   window.show()
 
-  sys.exit(app.exec())
+  app.exec()
+  executor.shutdown(wait=True)

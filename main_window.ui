@@ -58,6 +58,7 @@
      <string>Настройки</string>
     </property>
     <addaction name="settings"/>
+    <addaction name="network_settings"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -100,7 +101,12 @@
   </action>
   <action name="settings">
    <property name="text">
-    <string>Изменить</string>
+    <string>Упражнения</string>
+   </property>
+  </action>
+  <action name="network_settings">
+   <property name="text">
+    <string>Сеть</string>
    </property>
   </action>
  </widget>
